@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Polygon Divisor Wallet</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+      max-width: 500px;
+      margin: auto;
+    }
+    input, button {
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      font-size: 16px;
+    }
+    #log {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Polygon Divisor Wallet</h2>
+
+  <button id="connectWallet">Connect Wallet</button>
+  <p id="walletAddress">Not connected</p>
+
+  <label for="amount">Amount (MATIC)</label>
+  <input type="number" id="amount" placeholder="e.g. 0.01" min="0.000000001" step="0.000000001" />
+
+  <button id="applyDivisor">Apply Divisor</button>
+  <button id="depositDivisor">Deposit with Divisor</button>
+  <button id="withdrawDivisor">Withdraw Divisor Balance</button>
+
+  <div id="log"></div>
+
+  <script>
+    const contractAddress = "0xD4DC0e5C485aC060094ED554d8F6d320b1c5057C";
+    const contractABI = [
+      {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"adjusted","type":"uint256"}],"name":"Deposited","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"original","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"adjusted","type":"uint256"}],"name":"DivisorApplied","type":"event"},
+      {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"user","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Withdrawn","type":"event"},
+      {"inputs":[],"name":"DIVISOR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"MIN_AMOUNT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"applyDivisor","outputs":[],"stateMutability":"payable","type":"function"},
+      {"inputs":[],"name":"depositDivisor","outputs":[],"stateMutability":"payable","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getDepositBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"getDivisorAmount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+      {"inputs":[],"name":"withdrawContractBalance","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"inputs":[],"name":"withdrawDivisorAmount","outputs":[],"stateMutability":"nonpayable","type":"function"},
+      {"stateMutability":"payable","type":"receive"}
+    ];
+
+    let provider, signer, contract;
+
+    function log(msg) {
+      const logBox = document.getElementById("log");
+      logBox.textContent += `\n${msg}`;
+    }
+
+    document.getElementById("connectWallet").addEventListener("click", async () => {
+      if (!window.ethereum) return alert("Please install MetaMask.");
+      provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = await provider.getSigner();
+      contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const address = await signer.getAddress();
+      document.getElementById("walletAddress").textContent = `Connected: ${address}`;
+      log("✅ Wallet connected: " + address);
+    });
+
+    document.getElementById("applyDivisor").addEventListener("click", async () => {
+      const amount = document.getElementById("amount").value;
+      if (!amount || !signer) return alert("Enter amount and connect wallet.");
+      try {
+        const tx = await contract.applyDivisor({ value: ethers.parseEther(amount) });
+        await tx.wait();
+        log("✅ applyDivisor() transaction sent:\n" + tx.hash);
+      } catch (err) {
+        log("❌ Error in applyDivisor: " + err.message);
+      }
+    });
+
+    document.getElementById("depositDivisor").addEventListener("click", async () => {
+      const amount = document.getElementById("amount").value;
+      if (!amount || !signer) return alert("Enter amount and connect wallet.");
+      try {
+        const tx = await contract.depositDivisor({ value: ethers.parseEther(amount) });
+        await tx.wait();
+        log("✅ depositDivisor() transaction sent:\n" + tx.hash);
+      } catch (err) {
+        log("❌ Error in depositDivisor: " + err.message);
+      }
+    });
+
+    document.getElementById("withdrawDivisor").addEventListener("click", async () => {
+      if (!signer) return alert("Connect wallet first.");
+      try {
+        const tx = await contract.withdrawDivisorAmount();
+        await tx.wait();
+        log("✅ withdrawDivisorAmount() transaction sent:\n" + tx.hash);
+      } catch (err) {
+        log("❌ Error in withdrawDivisorAmount: " + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
